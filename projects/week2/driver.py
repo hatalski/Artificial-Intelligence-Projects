@@ -120,12 +120,12 @@ class Solution:
         """calculate the total estimated cost of a state"""
         path = []
         cost = 0
-        print(node.display())
+        #print(node.display())
         while node.parent is not None:
             cost = cost + 1
             path.append(node.action)
             node = node.parent
-            print(node.display())
+            #print(node.display())
         path.reverse()
         return path, cost
 
@@ -133,37 +133,42 @@ class Solution:
         return f'path_to_goal: {self.path_to_goal}\ncost_of_path: {self.cost_of_path}\nnodes_expanded: {self.nodes_expanded}\nsearch_depth: {self.search_depth}\nmax_search_depth: {self.max_search_depth}\nrunning_time: {self.running_time}\nmax_ram_usage: {self.max_ram_usage}'
 
 class Frontier:
-    def __init__(self, method):
-        self.fringe = []
-        self.method = method
-        if (method == 'ast'):
-            heapq.heapify(self.fringe)
-        elif (method == 'bsf'):
-            self.fringe = Queue(0)
-        elif (method == 'dsf'):
-            self.fringe = LifoQueue(0)
+    def __init__(self, queue):
+        self.fringe = queue
+        # self.method = method
+        # if (method == 'ast'):
+        #     heapq.heapify(self.fringe)
+        # elif (method == 'bsf'):
+        #     self.fringe = Queue(0)
+        # elif (method == 'dsf'):
+        #     self.fringe = LifoQueue(0)
         
         self.fringe_set = set()
-        self.expanded_set = set()
+        #self.expanded_set = set()
 
-    def put(self, o):
-        if (self.method == 'ast'):
-            heapq.heappush(self.fringe, o)
-        else:
-            self.fringe.put(o)
-        self.fringe_set.add(o)
+    def put(self, state):
+        self.fringe.put(state)
+        self.fringe_set.add(state.config)
+
+    def put_with_cost(self, cost, state):
+       heapq.heappush(self.fringe, (cost, state))
+       self.fringe_set.add(state.config)
 
     def get(self):
-        node = {}
-        if (self.method == 'ast'):
-            node = heapq.heappop(self.fringe)
-        else:
-            node = self.fringe.get()
+        node = self.fringe.get()
         self.fringe_set.discard(node)
         return node
 
-    def exists(self, o):
-        return o in self.fringe_set
+    def get_with_cost(self):
+        node = heapq.heappop(self.fringe)
+        self.fringe_set.discard(node)
+        return node
+
+    def is_in(self, state_config):
+        return state_config in self.fringe_set
+    
+    def not_int(self, state_config):
+        return state_config not in self.fringe_set
 
 class PuzzleGame:
     def __init__(self, initial_board_state):
@@ -207,11 +212,17 @@ class PuzzleGame:
 
     def solve(self, search_method):
         """Returns solution to the puzzle using specified *search_method* algorithm."""
+        solution = Solution()
+        if self.solvable == False:
+            print('Puzzle is not solvable.')
+            print(
+                f'Initial state {self.root_state.config} will never lead to the goal state {self.goal_state.config}')
+            return solution
+
         start_time = time.time()
 
-        solution = Solution()
         if search_method == "bfs":
-            solution = PuzzleGame.bfs_search(self.root_state, self.goal_state)
+            solution = self.bfs_search()
         elif search_method == "dfs":
             solution = PuzzleGame.dfs_search(self.root_state, self.goal_state)
         elif search_method == "ast":
@@ -227,16 +238,15 @@ class PuzzleGame:
 
     # UNINFORMED SEARCH ALGORITHMS
 
-    @staticmethod
-    def bfs_search(root_state, goal_state):
+    def bfs_search(self):
         """BFS (Breadth first search) algorithm."""
         # initialize frontier set (FIFO queue)
         fringe = Queue(0)
         # initialize unique set of expanded nodes
         expanded = set()
         frontier = set()
-        fringe.put(root_state)
-        frontier.add(root_state.config)
+        fringe.put(self.root_state)
+        frontier.add(self.root_state.config)
         max_search_depth = 0
         nodes_expanded = 0
 
@@ -245,7 +255,7 @@ class PuzzleGame:
             node = fringe.get()
             frontier.discard(node.config)
             # Step 2: check the current state against the goal state
-            if (node.config == goal_state.config):
+            if (node.config == self.goal_state.config):
                 return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
             # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
             if (node.config not in expanded):
@@ -398,7 +408,7 @@ class PuzzleGame:
 
 # Function that Writes to output.txt
 ### Students need to change the method to have the corresponding parameters
-def write_to_file(solution):
+def write_to_file(str_to_write):
     """
     Example output:
     path_to_goal: ['Up', 'Left', 'Left']
@@ -410,7 +420,7 @@ def write_to_file(solution):
     max_ram_usage: 4.23940217
     """
     with open("output.txt", "w", encoding="utf-8") as file:
-        file.write(solution)
+        file.write(str_to_write)
 
 # Main Function that reads in Input and Runs corresponding Algorithm
 def main():
