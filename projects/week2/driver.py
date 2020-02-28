@@ -167,7 +167,7 @@ class Frontier:
     def is_in(self, state_config):
         return state_config in self.fringe_set
     
-    def not_int(self, state_config):
+    def not_in(self, state_config):
         return state_config not in self.fringe_set
 
 class PuzzleGame:
@@ -242,19 +242,16 @@ class PuzzleGame:
         """BFS (Breadth first search) algorithm."""
         goal_state_config = self.goal_state.config
         # initialize frontier set (FIFO queue)
-        fringe = Queue(0)
+        f = Frontier(Queue(0))
+        f.put(self.root_state)
         # initialize unique set of expanded nodes
         expanded = set()
-        frontier = set()
-        fringe.put(self.root_state)
-        frontier.add(self.root_state.config)
         max_search_depth = 0
         nodes_expanded = 0
 
-        while fringe:
+        while f.fringe:
             # Step 1: remove a node from fringe set
-            node = fringe.get()
-            frontier.discard(node.config)
+            node = f.get()
             # Step 2: check the current state against the goal state
             if (node.config == goal_state_config):
                 return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
@@ -265,9 +262,8 @@ class PuzzleGame:
                 nodes_expanded = nodes_expanded + 1
                 for child in children:
                     if (child.config not in expanded):
-                        if (child.config not in frontier):
-                            fringe.put(child)
-                            frontier.add(child.config)
+                        if f.not_in(child.config):
+                            f.put(child)
                             if (max_search_depth < child.cost):
                                 max_search_depth = child.cost
         return Solution(nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
@@ -281,19 +277,16 @@ class PuzzleGame:
         """
         goal_state_config = self.goal_state.config
         # initialize frontier set (LIFO queue)
-        fringe = LifoQueue(0)
+        f = Frontier(LifoQueue(0))
+        f.put(self.root_state)
         # initialize unique set of expanded nodes
         expanded = set()
-        frontier = set()
-        fringe.put(self.root_state)
-        frontier.add(self.root_state.config)
         max_search_depth = 0
         nodes_expanded = 0
 
-        while fringe:
+        while f.fringe:
             # Step 1: remove a node from fringe set
-            node = fringe.get()
-            frontier.discard(node.config)
+            node = f.get()
             # Step 2: check the current state against the goal state
             if (node.config == goal_state_config):
                 return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
@@ -305,9 +298,8 @@ class PuzzleGame:
                 nodes_expanded = nodes_expanded + 1
                 for child in children:
                     if (child.config not in expanded):
-                        if (child.config not in frontier):
-                            fringe.put(child)
-                            frontier.add(child.config)
+                        if (f.not_in(child.config)):
+                            f.put(child)
                             if (max_search_depth < child.cost):
                                 max_search_depth = child.cost
         return Solution(nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
