@@ -27,7 +27,7 @@ class PuzzleState(object):
                 break
 
     def __lt__(self, other):
-        return self.config < other.config
+        return self.config > other.config
 
     def display(self):
         for i in range(self.n):
