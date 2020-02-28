@@ -222,9 +222,9 @@ class PuzzleGame:
         start_time = time.time()
 
         if search_method == "bfs":
-            solution = self.bfs_search()
+            solution = self.__bfs_search()
         elif search_method == "dfs":
-            solution = PuzzleGame.dfs_search(self.root_state, self.goal_state)
+            solution = self.__dfs_search()
         elif search_method == "ast":
             solution = PuzzleGame.ast_search(self.root_state, self.goal_state)
         else:
@@ -238,8 +238,9 @@ class PuzzleGame:
 
     # UNINFORMED SEARCH ALGORITHMS
 
-    def bfs_search(self):
+    def __bfs_search(self):
         """BFS (Breadth first search) algorithm."""
+        goal_state_config = self.goal_state.config
         # initialize frontier set (FIFO queue)
         fringe = Queue(0)
         # initialize unique set of expanded nodes
@@ -255,7 +256,7 @@ class PuzzleGame:
             node = fringe.get()
             frontier.discard(node.config)
             # Step 2: check the current state against the goal state
-            if (node.config == self.goal_state.config):
+            if (node.config == goal_state_config):
                 return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
             # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
             if (node.config not in expanded):
@@ -271,21 +272,21 @@ class PuzzleGame:
                                 max_search_depth = child.cost
         return Solution(nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
 
-    @staticmethod
-    def dfs_search(root_state, goal_state):
+    def __dfs_search(self):
         """
         DFS (Depth first search) algorithm.
         Time difficulty: O(b**(d+1))
         Space difficulty: O(b**(d+1))
         Optimality: Yes (if cost of action is equal) 
         """
+        goal_state_config = self.goal_state.config
         # initialize frontier set (LIFO queue)
         fringe = LifoQueue(0)
         # initialize unique set of expanded nodes
         expanded = set()
         frontier = set()
-        fringe.put(root_state)
-        frontier.add(root_state.config)
+        fringe.put(self.root_state)
+        frontier.add(self.root_state.config)
         max_search_depth = 0
         nodes_expanded = 0
 
@@ -294,7 +295,7 @@ class PuzzleGame:
             node = fringe.get()
             frontier.discard(node.config)
             # Step 2: check the current state against the goal state
-            if (node.config == goal_state.config):
+            if (node.config == goal_state_config):
                 return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
             # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
             if (node.config not in expanded):
