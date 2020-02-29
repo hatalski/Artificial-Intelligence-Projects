@@ -6,6 +6,8 @@ import resource
 import sys
 import math
 
+import itertools
+
 #### SKELETON CODE ####
 ## The Class that Represents the Puzzle
 class PuzzleState(object):
@@ -27,7 +29,7 @@ class PuzzleState(object):
                 break
 
     def __lt__(self, other):
-        return self.config > other.config
+        return self.config < other.config #and self.cost < other.cost
 
     def display(self):
         for i in range(self.n):
@@ -95,6 +97,33 @@ class PuzzleState(object):
                 self.children.append(right_child)
         return self.children
 
+    def heuristic_and_cost(self):
+        """Cost for A* algorithm. f(n) = g(n) + h(n)"""
+        return self.cost + self.heuristic()
+
+    def heuristic(self, goal_state=(0,1,2,3,4,5,6,7,8)):
+        """
+        Heuristic function.
+        Evaluate path cost from *current_state* to the *goal_state*.
+        If *current_state* = *goal_state* the function must return 0.
+
+        Note: goal_state is not yet implemented, the default (0,1,2,3,4,5,6,7,8) is implied
+        """
+        result = 0
+        for i, tile in enumerate(self.config):
+            if tile == 0:
+                continue
+            else:
+                result = result + PuzzleState.calculate_manhattan_dist(i, tile, self.n)
+        return result
+
+    @staticmethod
+    def calculate_manhattan_dist(index, tile, dimension):
+        """Calculate the manhattan distance of a tile."""
+        node_x, node_y = int(index // dimension), int(index % dimension)
+        goal_x, goal_y = int(tile // dimension), int(tile % dimension)
+        return abs(node_x - goal_x) + abs(node_y - goal_y)
+
 class Solution:
     """
     Puzzle solution.
@@ -132,27 +161,80 @@ class Solution:
     def __str__(self):
         return f'path_to_goal: {self.path_to_goal}\ncost_of_path: {self.cost_of_path}\nnodes_expanded: {self.nodes_expanded}\nsearch_depth: {self.search_depth}\nmax_search_depth: {self.max_search_depth}\nrunning_time: {self.running_time}\nmax_ram_usage: {self.max_ram_usage}'
 
+class PriorityFrontier:
+    """
+    Information on how to change priority of the item in the priority queue: https://docs.python.org/3/library/heapq.html#module-heapq
+    """
+
+    REMOVED = 'R'
+
+    def __init__(self, queue):
+        self.fringe = queue
+
+        self.expanded_set = set()
+        self.expanded_total = 0
+
+        # for priority queue
+        self.entry_finder = {}
+        self.counter = itertools.count()
+
+    def add_or_update_state(self, cost, state):
+        """
+        Add a new state or update the priority of an existing state
+        """
+        if state.config in self.entry_finder:
+            self.remove_state(state.config)
+        count = next(self.counter)
+        entry = [cost, count, state]
+        self.entry_finder[state.config] = entry
+        heapq.heappush(self.fringe, entry)
+
+    def remove_state(self, state_config):
+        """
+        Mark an existing state as REMOVED.
+        """
+        entry = self.entry_finder.pop(state_config)
+        entry[-1] = PriorityFrontier.REMOVED
+
+    def pop_state(self):
+        """
+        Remove and return the lowest priority state.
+        """
+        while self.fringe:
+            cost, count, state = heapq.heappop(self.fringe)
+            if state is not PriorityFrontier.REMOVED:
+                del self.entry_finder[state.config]
+                return state
+
+    def add_to_expanded(self, state_config):
+        self.expanded_set.add(state_config)
+        self.expanded_total = self.expanded_total + 1
+
+    def not_in_expanded(self, state_config):
+        return state_config not in self.expanded_set
+
+    def not_in_frontier(self, state_config):
+        return state_config not in self.entry_finder
+
 class Frontier:
     def __init__(self, queue):
         self.fringe = queue
-        # self.method = method
-        # if (method == 'ast'):
-        #     heapq.heapify(self.fringe)
-        # elif (method == 'bsf'):
-        #     self.fringe = Queue(0)
-        # elif (method == 'dsf'):
-        #     self.fringe = LifoQueue(0)
-        
         self.fringe_set = set()
-        #self.expanded_set = set()
+
+        self.expanded_set = set()
+        self.expanded_total = 0
+
+    def add_to_expanded(self, state_config):
+        self.expanded_set.add(state_config)
+        self.expanded_total = self.expanded_total + 1
 
     def put(self, state):
         self.fringe.put(state)
         self.fringe_set.add(state.config)
 
     def put_with_cost(self, cost, state):
-       heapq.heappush(self.fringe, (cost, state))
-       self.fringe_set.add(state.config)
+        heapq.heappush(self.fringe, (cost, state))
+        self.fringe_set.add(state.config)
 
     def get(self):
         node = self.fringe.get()
@@ -164,11 +246,14 @@ class Frontier:
         self.fringe_set.discard(node)
         return node
 
-    def is_in(self, state_config):
+    def is_in_fringe(self, state_config):
         return state_config in self.fringe_set
     
-    def not_in(self, state_config):
+    def not_in_fringe(self, state_config):
         return state_config not in self.fringe_set
+
+    def not_in_expanded(self, state_config):
+        return state_config not in self.expanded_set
 
 class PuzzleGame:
     def __init__(self, initial_board_state):
@@ -182,11 +267,13 @@ class PuzzleGame:
         n = int(math.sqrt(len(initial_board_state)))
         self.root_state = PuzzleState(tuple(map(int, initial_board_state)), n)
         self.goal_state = PuzzleState(tuple(map(int, range(0, n * n))), n)
-        self.solvable = (PuzzleGame.get_odd_pairs(self.root_state.config) %
-                         2 == 0) == (PuzzleGame.get_odd_pairs(self.goal_state.config) % 2 == 0)
+        self.solvable = (PuzzleGame.__odd_pairs(self.root_state.config) %
+                         2 == 0) == (PuzzleGame.__odd_pairs(self.goal_state.config) % 2 == 0)
+
+        print(f'Started solving puzzle: {self.root_state.config} with the goal: {self.goal_state.config}')
 
     @staticmethod
-    def get_odd_pairs(state):
+    def __odd_pairs(state):
         """
         Find and count odd pairs of numbers in the puzzle state.
         First convert state to the snake order list.
@@ -222,11 +309,17 @@ class PuzzleGame:
         start_time = time.time()
 
         if search_method == "bfs":
-            solution = self.__bfs_search()
+            solution = self.__uninformed_search(Queue(0))
         elif search_method == "dfs":
-            solution = self.__dfs_search()
+            solution = self.__uninformed_search(LifoQueue(0), reversed_children=True)
         elif search_method == "ast":
-            solution = PuzzleGame.ast_search(self.root_state, self.goal_state)
+            heap = []
+            heapq.heapify(heap)
+            solution = self.__ast_search(heap)
+        elif search_method == "greedy":
+            heap = []
+            heapq.heapify(heap)
+            solution = self.__greedy_search(heap)
         else:
             print("Enter a valid search method as argument!")
             return solution
@@ -238,164 +331,126 @@ class PuzzleGame:
 
     # UNINFORMED SEARCH ALGORITHMS
 
-    def __bfs_search(self):
-        """BFS (Breadth first search) algorithm."""
-        goal_state_config = self.goal_state.config
-        # initialize frontier set (FIFO queue)
-        f = Frontier(Queue(0))
-        f.put(self.root_state)
-        # initialize unique set of expanded nodes
-        expanded = set()
-        max_search_depth = 0
-        nodes_expanded = 0
-
-        while f.fringe:
-            # Step 1: remove a node from fringe set
-            node = f.get()
-            # Step 2: check the current state against the goal state
-            if (node.config == goal_state_config):
-                return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
-            # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
-            if (node.config not in expanded):
-                children = node.expand()
-                expanded.add(node.config)
-                nodes_expanded = nodes_expanded + 1
-                for child in children:
-                    if (child.config not in expanded):
-                        if f.not_in(child.config):
-                            f.put(child)
-                            if (max_search_depth < child.cost):
-                                max_search_depth = child.cost
-        return Solution(nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
-
-    def __dfs_search(self):
+    def __uninformed_search(self, queue, reversed_children=False):
         """
-        DFS (Depth first search) algorithm.
+        Generic uninformed search algorithm that can accomodate both BFS (Breadth first search) and DFS (Deepest first search) algorithms.
+        
+        For BFS use Queue(0) as a queue.
+        
+        For DFS use LifoQueue(0) as a queue and set reversed_children=True
+
+        DFS (Depth first search) algorithm:
         Time difficulty: O(b**(d+1))
         Space difficulty: O(b**(d+1))
         Optimality: Yes (if cost of action is equal) 
         """
         goal_state_config = self.goal_state.config
-        # initialize frontier set (LIFO queue)
-        f = Frontier(LifoQueue(0))
+        # initialize frontier (FIFO queue and expanded set)
+        f = Frontier(queue)
         f.put(self.root_state)
-        # initialize unique set of expanded nodes
-        expanded = set()
         max_search_depth = 0
-        nodes_expanded = 0
 
         while f.fringe:
             # Step 1: remove a node from fringe set
             node = f.get()
             # Step 2: check the current state against the goal state
             if (node.config == goal_state_config):
-                return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
+                return Solution(node, nodes_expanded=f.expanded_total, max_search_depth=max_search_depth)
             # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
-            if (node.config not in expanded):
+            if f.not_in_expanded(node.config):
                 children = node.expand()
-                children.reverse()
-                expanded.add(node.config)
-                nodes_expanded = nodes_expanded + 1
+                if reversed_children:
+                    children.reverse()
+                f.add_to_expanded(node.config)
                 for child in children:
-                    if (child.config not in expanded):
-                        if (f.not_in(child.config)):
+                    if f.not_in_expanded(child.config):
+                        if f.not_in_fringe(child.config):
                             f.put(child)
                             if (max_search_depth < child.cost):
                                 max_search_depth = child.cost
-        return Solution(nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
+        return Solution(nodes_expanded=f.expanded_total, max_search_depth=max_search_depth)
 
-    @staticmethod
-    def dls_search(root_state, goal_state, limit):
+    def __dls_search(self, limit):
         """DLS (Depth limited search)."""
         return Solution()
 
-    @staticmethod
-    def ids_search(root_state, goal_state):
+    def __ids_search(self):
         """IDS (Iterative deepening search)."""
         return Solution()
 
-    @staticmethod
-    def ucs_search(root_state, goal_state):
+    def __ucs_search(self):
         """
         UCS (Uniform cost search).
         If the path cost is identical for every possible move, then this search is identical to BFS algorithm.
         In the case of Puzzle game path cost is always = 1, so we can basically return BFS search results.
         """
-        return PuzzleGame.bfs_search(root_state, goal_state)
-
+        return self.bfs_search()
 
     # INFORMED SEARCH ALGORITHMS
 
-    @staticmethod
-    def heuristic(current_state, goal_state, dimension):
+    def __greedy_search(self, heap):
         """
-        Heuristic function.
-        Evaluate path cost from *current_state* to the *goal_state*.
-        If *current_state* = *goal_state* the function must return 0.
+        Greedy search
+        
+        Main difference to A* is calculation of heuristic anticipated cost excluding path cost to the current state (from root).
         """
-        result = 0
-        for i, tile in enumerate(current_state):
-            if tile == 0:
-                continue
-            else:
-                result = result + PuzzleGame.calculate_manhattan_dist(i, tile, dimension)
-        return result
-
-    @staticmethod
-    def calculate_manhattan_dist(idx, tile, dimension):
-        """Calculate the manhattan distance of a tile."""
-        node_x, node_y = int(idx // dimension), int(idx % dimension)
-        goal_x, goal_y = int(tile // dimension), int(tile % dimension)
-        diff_x, diff_y = abs(node_x - goal_x), abs(node_y - goal_y)
-        return diff_x + diff_y
-
-    @staticmethod
-    def greedy_search(root_state, goal_state):
-        """Greedy search"""
-        return Solution()
-
-    @staticmethod
-    def ast_search(root_state, goal_state):
-        """A * search"""
-        # initialize frontier set (Priority queue)
-        fringe = []
-        heapq.heapify(fringe)
-        # initialize unique set of expanded nodes
-        dimension = root_state.n
-        expanded = set()
-        frontier = set()
-        root_heuristic = PuzzleGame.heuristic(root_state.config, goal_state.config, dimension) + root_state.cost
-        heapq.heappush(fringe, (root_heuristic, root_state))
-        frontier.add(root_state.config)
+        goal_state_config = self.goal_state.config
+        # initialize frontier (Priority queue)
+        f = Frontier(heap)
+        f.put_with_cost(self.root_state.heuristic(), self.root_state)
         max_search_depth = 0
-        nodes_expanded = 0
 
-        while fringe:
+        while f.fringe:
             # Step 1: remove a node from fringe set
-            priority, node = heapq.heappop(fringe)
-            frontier.discard(node.config)
+            priority, node = f.get_with_cost()
             # Step 2: check the current state against the goal state
-            if (node.config == goal_state.config):
-                return Solution(node, nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
+            if (node.config == goal_state_config):
+                return Solution(node, nodes_expanded=f.expanded_total, max_search_depth=max_search_depth)
             # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
-            if (node.config not in expanded):
+            if f.not_in_expanded(node.config):
                 children = node.expand()
-                expanded.add(node.config)
-                nodes_expanded = nodes_expanded + 1
+                f.add_to_expanded(node.config)
                 for child in children:
-                    if (child.config not in expanded):
-                        if (child.config not in frontier):
-                            child_heuristic = PuzzleGame.heuristic(
-                                child.config, goal_state.config, dimension) + child.cost
-                            heapq.heappush(fringe, (child_heuristic, child))
-                            frontier.add(child.config)
+                    if f.not_in_expanded(child.config):
+                        if f.not_in_fringe(child.config):
+                            f.put_with_cost(child.heuristic(), child)
                             if (max_search_depth < child.cost):
                                 max_search_depth = child.cost
 
-        return Solution(nodes_expanded=nodes_expanded, max_search_depth=max_search_depth)
+        return Solution(nodes_expanded=f.expanded_total, max_search_depth=max_search_depth)
 
-    @staticmethod
-    def ida_search(root_state, goal_state):
+    def __ast_search(self, heap):
+        """A * search"""
+        goal_state_config = self.goal_state.config
+        # initialize frontier (Priority queue)
+        pf = PriorityFrontier(heap)
+        pf.add_or_update_state(self.root_state.heuristic_and_cost(), self.root_state)
+        max_search_depth = 0
+        counter = itertools.count()
+
+        while pf.fringe:
+            trials_count = next(counter)
+            # Step 1: remove a node from fringe set
+            node = pf.pop_state()
+            if (trials_count % 10000 == 0):
+                print(
+                    f'trials: {trials_count} ; distance: {node.heuristic()} ; node: {node.config}')
+            # Step 2: check the current state against the goal state
+            if (node.config == goal_state_config):
+                return Solution(node, nodes_expanded=pf.expanded_total, max_search_depth=max_search_depth)
+            # Step 3: if solution has not been found then check if the current puzzle state was not expanded yet
+            if pf.not_in_expanded(node.config):
+                children = node.expand()
+                pf.add_to_expanded(node.config)
+                for child in children:
+                    if pf.not_in_expanded(child.config) and pf.not_in_frontier(child.config):
+                        pf.add_or_update_state(child.heuristic_and_cost(), child)
+                        if (max_search_depth < child.cost):
+                            max_search_depth = child.cost
+
+        return Solution(nodes_expanded=pf.expanded_total, max_search_depth=max_search_depth)
+
+    def _ida_search(self):
         """IDA algorithm"""
         return Solution()
 

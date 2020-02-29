@@ -109,7 +109,7 @@ def test_ast_search_0():
   assert s.solved == True
   assert s.path_to_goal == ['Up']
   assert s.cost_of_path == 1
-  #assert s.nodes_expanded == 1
+  assert s.nodes_expanded == 1
   assert s.search_depth == 1
   assert s.max_search_depth == 1
 
@@ -121,7 +121,7 @@ def test_ast_search_1():
   assert s.solved == True
   assert s.path_to_goal == ['Up', 'Left', 'Left']
   assert s.cost_of_path == 3
-  #assert s.nodes_expanded == 1
+  assert s.nodes_expanded == 3
   assert s.search_depth == 3
   assert s.max_search_depth == 3
 
@@ -135,7 +135,7 @@ def test_ast_search_2():
   assert s.path_to_goal == ['Left', 'Up', 'Up', 'Left', 'Down', 'Right', 'Down', 'Left', 'Up', 'Right', 'Right',
                             'Up', 'Left', 'Left', 'Down', 'Right', 'Right', 'Up', 'Left', 'Down', 'Down', 'Right', 'Up', 'Left', 'Up', 'Left']
   assert s.cost_of_path == 26
-  #assert s.nodes_expanded == 1585
+  assert s.nodes_expanded == 1585
   assert s.search_depth == 26
   assert s.max_search_depth == 26
 
@@ -149,6 +149,6 @@ def test_ast_search_3():
   assert s.path_to_goal == ['Down', 'Right', 'Up', 'Up', 'Left', 'Down', 'Right', 'Down',
                             'Left', 'Up', 'Left', 'Up', 'Right', 'Right', 'Down', 'Down', 'Left', 'Left', 'Up', 'Up']
   assert s.cost_of_path == 20
-  #assert s.nodes_expanded == 696
+  assert s.nodes_expanded == 696
   assert s.search_depth == 20
   assert s.max_search_depth == 20
