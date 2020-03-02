@@ -10,11 +10,15 @@ class PlayerAI(BaseAI):
         and 3 stands for "Right".
         """
         cells = grid.getAvailableCells()
-        print(cells)
 
-        print(grid)
+        if cells:
+          result = randint(0, 3)
+          print(result)
+          return result
+        else:
+          return 0
 
-        return cells[randint(0, len(cells) - 1)] if cells else None
+        #return cells[randint(0, len(cells) - 1)] if cells else None
 
     def minimax_decision(self, state):
       child, _ = self.maximize(state)
