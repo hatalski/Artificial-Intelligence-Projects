@@ -60,6 +60,8 @@ def test_computer_move_successors(playerAI, grid4_2):
 def test_compare_grids(playerAI, grid4_2, grid4_2_right):
   assert playerAI.compare_grids(grid4_2, grid4_2) == True
   assert playerAI.compare_grids(grid4_2, grid4_2_right) == False
+  assert playerAI.compare_grids(grid4_2, None) == False
+  assert playerAI.compare_grids(None, grid4_2_right) == False
 
 def test_find_child_move_right(playerAI, grid4_2, grid4_2_right):
   move = playerAI.find_child_move(grid4_2, grid4_2_right)
@@ -85,5 +87,8 @@ def test_player_move(playerAI, grid4_2):
   print(f'move: {move}')
   assert isinstance(move, int)
   # down (1) and right (3) are the only possible moves in this grid state
-  assert move == 3 or move == 1 
+  assert move == 3 or move == 1
+  spent_time_on_move = time.process_time() - playerAI.move_start_time
+  print(f'spent_time_on_move: {spent_time_on_move}')
+  assert spent_time_on_move < 0.25 # 0.2s timeLimit + 0.05s allowance
   # assert False

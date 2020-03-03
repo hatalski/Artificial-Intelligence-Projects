@@ -30,6 +30,8 @@ class PlayerAI(BaseAI):
     return None
 
   def compare_grids(self, grid1, grid2):
+    if grid1 is None or grid2 is None:
+      return False
     if grid1.size == grid2.size:
       size = grid1.size
       for x in range(size):
@@ -42,7 +44,7 @@ class PlayerAI(BaseAI):
 
   def minimax_decision(self, grid_state):
     child, utility = self.maximize(grid_state)
-    print(f'minimax returns: {child} with utility: {utility}')
+    #print(f'minimax returns: {child} with utility: {utility}')
     return child
 
   def minimize(self, grid_state):
@@ -94,7 +96,7 @@ class PlayerAI(BaseAI):
     """
     successors = []
     cells = grid_state.getAvailableCells()
-    print(f'cells: {cells}')
+    #print(f'cells: {cells}')
     for cell_pos in cells:
       successor_2 = grid_state.clone()
       if successor_2.canInsert(cell_pos):
@@ -124,10 +126,10 @@ class PlayerAI(BaseAI):
     cells_not_available = len(grid_state.getAvailableCells()) == 0
     moves_not_available = len(grid_state.getAvailableMoves()) == 0
     if hasattr(self, 'move_start_time'):
-      print(self.move_start_time)
+      #print(self.move_start_time)
       current = time.process_time()
       diff = current - self.move_start_time
-      print(f'current: {current} ; diff: {diff}')
-      time_not_available = diff >= 0.2
+      #print(f'current: {current} ; diff: {diff}')
+      time_not_available = diff >= 0.07
 
     return cells_not_available or moves_not_available or time_not_available
