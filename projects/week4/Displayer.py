@@ -1,4 +1,4 @@
-from BaseDisplayer import BaseDisplayer
+from projects.week4.BaseDisplayer import BaseDisplayer
 import platform
 import os
 
@@ -35,24 +35,24 @@ class Displayer(BaseDisplayer):
         pass
 
     def winDisplay(self, grid):
-        for i in xrange(grid.size):
-            for j in xrange(grid.size):
-                print "%6d  " % grid.map[i][j],
-            print ""
-        print ""
+        for i in range(grid.size):
+            for j in range(grid.size):
+                print("%6d  " % grid.map[i][j], end="")
+            print("")
+        print("")
 
     def unixDisplay(self, grid):
-        for i in xrange(3 * grid.size):
-            for j in xrange(grid.size):
-                v = grid.map[i / 3][j]
+        for i in range(3 * grid.size):
+            for j in range(grid.size):
+                v = grid.map[int(i / 3)][j]
 
                 if i % 3 == 1:
                     string = str(v).center(7, " ")
                 else:
                     string = " "
 
-                print cTemp %  (colorMap[v], string),
-            print ""
+                print(cTemp %  (colorMap[v], string), end="")
+            print("")
 
             if i % 3 == 2:
-                print ""
+                print("")

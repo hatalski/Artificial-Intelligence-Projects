@@ -1,5 +1,5 @@
 from random import randint
-from BaseAI import BaseAI
+from projects.week4.BaseAI import BaseAI
 
 class ComputerAI(BaseAI):
     def getMove(self, grid):

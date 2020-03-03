@@ -1,4 +1,3 @@
-from sets import Set
 from copy import deepcopy
 
 directionVectors = (UP_VEC, DOWN_VEC, LEFT_VEC, RIGHT_VEC) = ((-1, 0), (1, 0), (0, -1), (0, 1))
@@ -7,7 +6,7 @@ vecIndex = [UP, DOWN, LEFT, RIGHT] = range(4)
 class Grid:
     def __init__(self, size = 4):
         self.size = size
-        self.map = [[0] * self.size for i in xrange(self.size)]
+        self.map = [[0] * self.size for i in range(self.size)]
 
     # Make a Deep Copy of This Object
     def clone(self):
@@ -21,15 +20,15 @@ class Grid:
     def insertTile(self, pos, value):
         self.setCellValue(pos, value)
 
-    def setCellValue(self, (x, y), value):
-        self.map[x][y] = value
+    def setCellValue(self, pos, value):
+        self.map[pos[0]][pos[1]] = value
 
     # Return All the Empty c\Cells
     def getAvailableCells(self):
         cells = []
 
-        for x in xrange(self.size):
-            for y in xrange(self.size):
+        for x in range(self.size):
+            for y in range(self.size):
                 if self.map[x][y] == 0:
                     cells.append((x,y))
 
@@ -39,8 +38,8 @@ class Grid:
     def getMaxTile(self):
         maxTile = 0
 
-        for x in xrange(self.size):
-            for y in xrange(self.size):
+        for x in range(self.size):
+            for y in range(self.size):
                 maxTile = max(maxTile, self.map[x][y])
 
         return maxTile
@@ -134,10 +133,10 @@ class Grid:
     def canMove(self, dirs = vecIndex):
 
         # Init Moves to be Checked
-        checkingMoves = Set(dirs)
+        checkingMoves = set(dirs)
 
-        for x in xrange(self.size):
-            for y in xrange(self.size):
+        for x in range(self.size):
+            for y in range(self.size):
 
                 # If Current Cell is Filled
                 if self.map[x][y]:
@@ -170,8 +169,8 @@ class Grid:
 
         return availableMoves
 
-    def crossBound(self, (x, y)):
-        return x < 0 or x >= self.size or y < 0 or y >= self.size
+    def crossBound(self, pos):
+        return pos[0] < 0 or pos[0] >= self.size or pos[1] < 0 or pos[1] >= self.size
 
     def getCellValue(self, pos):
         if not self.crossBound(pos):
@@ -187,10 +186,10 @@ if __name__ == '__main__':
 
     while True:
         for i in g.map:
-            print i
+            print(i)
 
-        print g.getAvailableMoves()
+        print(g.getAvailableMoves())
 
-        v = raw_input()
+        v = input()
 
         g.move(v)

@@ -1,7 +1,7 @@
-from Grid       import Grid
-from ComputerAI import ComputerAI
-from PlayerAI   import PlayerAI
-from Displayer  import Displayer
+from projects.week4.Grid import Grid
+from projects.week4.ComputerAI import ComputerAI
+from projects.week4.PlayerAI   import PlayerAI
+from projects.week4.Displayer import Displayer
 from random     import randint
 import time
 
@@ -51,7 +51,7 @@ class GameManager:
             self.prevTime = time.clock()
 
     def start(self):
-        for i in xrange(self.initTiles):
+        for i in range(self.initTiles):
             self.insertRandonTile()
 
         self.displayer.display(self.grid)
@@ -69,9 +69,13 @@ class GameManager:
             move = None
 
             if turn == PLAYER_TURN:
-                print "Player's Turn:",
+                print("Player's Turn:", end="")
                 move = self.playerAI.getMove(gridCopy)
-                print actionDic[move]
+
+                if move is not None:
+                    print(actionDic[move])
+                else:
+                    print('None')
 
                 # Validate Move
                 if move != None and move >= 0 and move < 4:
@@ -81,20 +85,20 @@ class GameManager:
                         # Update maxTile
                         maxTile = self.grid.getMaxTile()
                     else:
-                        print "Invalid PlayerAI Move"
+                        print("Invalid PlayerAI Move")
                         self.over = True
                 else:
-                    print "Invalid PlayerAI Move - 1"
+                    print("Invalid PlayerAI Move - 1")
                     self.over = True
             else:
-                print "Computer's turn:"
+                print("Computer's turn:")
                 move = self.computerAI.getMove(gridCopy)
 
                 # Validate Move
                 if move and self.grid.canInsert(move):
                     self.grid.setCellValue(move, self.getNewTileValue())
                 else:
-                    print "Invalid Computer AI Move"
+                    print("Invalid Computer AI Move")
                     self.over = True
 
             if not self.over:
@@ -104,7 +108,7 @@ class GameManager:
             self.updateAlarm(time.clock())
 
             turn = 1 - turn
-        print maxTile
+        print(maxTile)
 
     def isGameOver(self):
         return not self.grid.canMove()
