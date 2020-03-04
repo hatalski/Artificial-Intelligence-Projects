@@ -10,8 +10,7 @@ algorithm_dict = {
 
 class PlayerAI(BaseAI):
   def __init__(self, algorithm=algorithm_dict[1]):
-    self.algorithm = Minimax(
-        time_limit=0.07) if algorithm == algorithm_dict[0] else AlphaBetaPruning(time_limit=0.07)
+    self.algorithm = algorithm
     self.move_stats = []
 
   def getMove(self, grid):
@@ -21,8 +20,9 @@ class PlayerAI(BaseAI):
     In particular, 0 stands for "Up", 1 stands for "Down", 2 stands for "Left", 
     and 3 stands for "Right".
     """
-    best_move = self.algorithm.search(grid)
-    self.move_stats.append(self.algorithm.stats())
+    alg = Minimax(time_limit=0.07) if self.algorithm == algorithm_dict[0] else AlphaBetaPruning(time_limit=0.07)
+    best_move = alg.search(grid)
+    self.move_stats.append(alg.stats())
 
     if best_move is None:
       print(f'\nMove stats: {self.move_stats}')
@@ -126,10 +126,10 @@ class Minimax(BaseAdversialSearch):
     return self.pruned, self.depth, self.elapsed_time
 
   def search(self, grid):
-    self.start_time = time.process_time()
+    #self.start_time = time.process_time()
     child, utility = self.max(grid)
     best_move = BaseAdversialSearch.find_best_move(grid, child)
-    self.elapsed_time = time.process_time() - self.start_time
+    self.elapsed_time = round(time.process_time() - self.start_time, 8)
     return best_move
 
   def min(self, grid):
@@ -176,14 +176,13 @@ class AlphaBetaPruning(BaseAdversialSearch):
     self.elapsed_time = 0
 
   def stats(self):
-    return self.pruned, self.depth, self.elapsed_time
+    return self.depth, self.pruned, self.elapsed_time
 
   def search(self, grid):
-    self.start_time = time.process_time()
     alpha, beta = -math.inf, math.inf
     child, utility = self.max(grid, alpha, beta)
     best_move = BaseAdversialSearch.find_best_move(grid, child)
-    self.elapsed_time = time.process_time() - self.start_time
+    self.elapsed_time = round(time.process_time() - self.start_time, 8)
     return best_move
 
   def min(self, grid, alpha, beta):
