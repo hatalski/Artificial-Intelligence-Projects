@@ -1,8 +1,19 @@
 from projects.week4.BaseAI import BaseAI
 import time
 import math
+import statistics
+
+algorithm_dict = {
+    0: "MINIMAX",
+    1: "ALPHABETAPRUNING"
+}
 
 class PlayerAI(BaseAI):
+  def __init__(self, algorithm=algorithm_dict[1]):
+    self.algorithm = Minimax(
+        time_limit=0.07) if algorithm == algorithm_dict[0] else AlphaBetaPruning(time_limit=0.07)
+    self.move_stats = []
+
   def getMove(self, grid):
     """
     The getMove() function, which you will need to implement, 
@@ -10,26 +21,69 @@ class PlayerAI(BaseAI):
     In particular, 0 stands for "Up", 1 stands for "Down", 2 stands for "Left", 
     and 3 stands for "Right".
     """
+    best_move = self.algorithm.search(grid)
+    self.move_stats.append(self.algorithm.stats())
+
+    if best_move is None:
+      print(f'\nMove stats: {self.move_stats}')
+    return best_move
+
+class BaseAdversialSearch:
+  def search(self, grid):
+    pass
+
+  def min(self, grid):
+    pass
+
+  def max(self, grid):
+    pass
+
+  def stats(self):
+    pass
+
+  @staticmethod
+  def player_move_successors(grid):
+    """
+    Returns grid successors of all possible Player moves
+    """
+    successors = []
     moves = grid.getAvailableMoves()
-    self.move_start_time = time.process_time()
-
-    if moves:
-      best_successor = self.minimax_decision(grid)
-      best_move = self.find_child_move(grid, best_successor)
-      return best_move
-    else:
-      return None
-
-  def find_child_move(self, grid_state, child):
-    moves = grid_state.getAvailableMoves()
     for move in moves:
-        successor = grid_state.clone()
+      successor = grid.clone()
+      if successor.move(move):
+        successors.append(successor)
+    return successors
+
+  @staticmethod
+  def computer_move_successors(grid):
+    """
+    Returns grid successors of all possible Computer moves
+    """
+    successors = []
+    cells = grid.getAvailableCells()
+    for cell_pos in cells:
+      successor_2 = grid.clone()
+      if successor_2.canInsert(cell_pos):
+        successor_2.setCellValue(cell_pos, 2)
+        successors.append(successor_2)
+      successor_4 = grid.clone()
+      if successor_4.canInsert(cell_pos):
+        successor_4.setCellValue(cell_pos, 4)
+        successors.append(successor_4)
+    return successors
+
+  @staticmethod
+  def find_best_move(grid, child):
+    moves = grid.getAvailableMoves()
+    for move in moves:
+        successor = grid.clone()
         if successor.move(move):
-          if self.compare_grids(successor, child):
+          if BaseAdversialSearch.compare_grids(successor, child):
             return move
     return None
 
-  def compare_grids(self, grid1, grid2):
+  @staticmethod
+  def compare_grids(grid1, grid2):
     if grid1 is None or grid2 is None:
       return False
     if grid1.size == grid2.size:
@@ -42,80 +96,8 @@ class PlayerAI(BaseAI):
     else:
       return False
 
-  def minimax_decision(self, grid_state):
-    child, utility = self.maximize(grid_state)
-    #print(f'minimax returns: {child} with utility: {utility}')
-    return child
-
-  def minimize(self, grid_state):
-    """
-    Action to minimize value is different since Computer places a tile randomly 
-    on the grid. However, we should consider that computer's tile placement 
-    is not random, but intentional with a goal to minimize player's value.
-    """
-    if self.terminal_test(grid_state):
-      return (None, self.utility(grid_state))
-
-    min_child, min_utility = None, math.inf
-
-    for child in self.computer_move_successors(grid_state):
-      _, utility = self.maximize(child)
-      if utility < min_utility:
-        min_child, min_utility = child, utility
-    
-    return min_child, min_utility
-
-  def maximize(self, grid_state):
-    if self.terminal_test(grid_state):
-      return (None, self.utility(grid_state))
-
-    max_child, max_utility = None, -math.inf
-
-    for child in self.player_move_successors(grid_state):
-      _, utility = self.minimize(child)
-      if utility > max_utility:
-        max_child, max_utility = child, utility
-    
-    return max_child, max_utility
-
-  def player_move_successors(self, grid_state):
-    """
-    Returns successors of all possible Player moves
-    """
-    successors = []
-    moves = grid_state.getAvailableMoves()
-    for move in moves:
-      successor = grid_state.clone()
-      if successor.move(move):
-        successors.append(successor)
-    return successors
-
-  def computer_move_successors(self, grid_state):
-    """
-    Returns successors of all possible Computer moves
-    """
-    successors = []
-    cells = grid_state.getAvailableCells()
-    #print(f'cells: {cells}')
-    for cell_pos in cells:
-      successor_2 = grid_state.clone()
-      if successor_2.canInsert(cell_pos):
-        successor_2.setCellValue(cell_pos, 2)
-        successors.append(successor_2)
-      successor_4 = grid_state.clone()
-      if successor_4.canInsert(cell_pos):
-        successor_4.setCellValue(cell_pos, 4)
-        successors.append(successor_4)
-    return successors
-
-  def utility(self, grid_state):
-    """
-    Returns utility value of a grid state
-    Use count of free cells, maximum value of tile, 
-    """
-    return len(grid_state.getAvailableCells())
-
-  def terminal_test(self, grid_state):
+  @staticmethod
+  def terminal_test(grid, start_time=None, time_limit=None):
     """
     Returns True if: 
     time for player's turn exceeds or equal to timeLimit
@@ -123,13 +105,181 @@ class PlayerAI(BaseAI):
     or moves are not available
     """
     time_not_available = False
-    cells_not_available = len(grid_state.getAvailableCells()) == 0
-    moves_not_available = len(grid_state.getAvailableMoves()) == 0
-    if hasattr(self, 'move_start_time'):
-      #print(self.move_start_time)
+    cells_not_available = len(grid.getAvailableCells()) == 0
+    moves_not_available = len(grid.getAvailableMoves()) == 0
+    if start_time is not None:
       current = time.process_time()
-      diff = current - self.move_start_time
-      #print(f'current: {current} ; diff: {diff}')
-      time_not_available = diff >= 0.07
+      diff = current - start_time
+      time_not_available = diff >= time_limit
 
     return cells_not_available or moves_not_available or time_not_available
+
+class Minimax(BaseAdversialSearch):
+  def __init__(self, time_limit=0.2):
+    self.start_time = time.process_time()
+    self.time_limit = time_limit
+    self.depth = 0
+    self.pruned = 0
+    self.elapsed_time = 0
+  
+  def stats(self):
+    return self.pruned, self.depth, self.elapsed_time
+
+  def search(self, grid):
+    self.start_time = time.process_time()
+    child, utility = self.max(grid)
+    best_move = BaseAdversialSearch.find_best_move(grid, child)
+    self.elapsed_time = time.process_time() - self.start_time
+    return best_move
+
+  def min(self, grid):
+    """
+    Action to minimize value is different since Computer places a tile randomly 
+    on the grid. However, we should consider that computer's tile placement 
+    is not random, but intentional with a goal to minimize player's value.
+    """
+    if BaseAdversialSearch.terminal_test(grid, self.start_time, self.time_limit):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    min_child, min_utility = None, math.inf
+
+    successors = BaseAdversialSearch.computer_move_successors(grid)
+    for child in successors:
+      _, utility = self.max(child)
+      if utility < min_utility:
+        min_child, min_utility = child, utility
+    
+    return min_child, min_utility
+
+  def max(self, grid):
+    if BaseAdversialSearch.terminal_test(grid, self.start_time, self.time_limit):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    max_child, max_utility = None, -math.inf
+
+    successors = BaseAdversialSearch.player_move_successors(grid)
+    for child in successors:
+      _, utility = self.min(child)
+      if utility > max_utility:
+        max_child, max_utility = child, utility
+
+    return max_child, max_utility
+
+class AlphaBetaPruning(BaseAdversialSearch):
+  def __init__(self, time_limit=0.2):
+    self.start_time = time.process_time()
+    self.time_limit = time_limit
+    self.depth = 0
+    self.pruned = 0
+    self.elapsed_time = 0
+
+  def stats(self):
+    return self.pruned, self.depth, self.elapsed_time
+
+  def search(self, grid):
+    self.start_time = time.process_time()
+    alpha, beta = -math.inf, math.inf
+    child, utility = self.max(grid, alpha, beta)
+    best_move = BaseAdversialSearch.find_best_move(grid, child)
+    self.elapsed_time = time.process_time() - self.start_time
+    return best_move
+
+  def min(self, grid, alpha, beta):
+    if BaseAdversialSearch.terminal_test(grid, self.start_time, self.time_limit):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    min_child, min_utility = None, math.inf
+
+    successors = BaseAdversialSearch.computer_move_successors(grid)
+    for child in successors:
+      _, utility = self.max(child, alpha, beta)
+      if utility < min_utility:
+        min_child, min_utility = child, utility
+      if min_utility <= alpha:
+        self.pruned += 1
+        return min_child, min_utility
+      beta = min(beta, min_utility)
+
+    return min_child, min_utility
+
+  def max(self, grid, alpha, beta):
+    if BaseAdversialSearch.terminal_test(grid, self.start_time, self.time_limit):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    max_child, max_utility = None, -math.inf
+
+    successors = BaseAdversialSearch.player_move_successors(grid)
+    for child in successors:
+      _, utility = self.min(child, alpha, beta)
+      if utility > max_utility:
+        max_child, max_utility = child, utility
+      if max_utility >= beta:
+        self.pruned += 1
+        return max_child, max_utility
+      alpha = max(alpha, max_utility)
+
+    return max_child, max_utility
+
+class Utility:
+  def __init__(self):
+    self.criteria = []
+
+  def score(self, grid):
+    self.criteria.append(len(grid.getAvailableCells()))
+    #self.criteria.append(math.log2(grid.getMaxTile()))
+    #self.criteria.append(self.column_sum_more_than_others(grid, grid.size))
+    #self.criteria.append(self.average_tile_value(grid, grid.size))
+    self.criteria.append(self.potential_merges(grid, grid.size))
+    self.criteria.append(self.max_value_in_the_corner(grid, grid.size))
+    return sum(self.criteria)
+
+  def average_tile_value(self, grid, size):
+    values = []
+    for x in range(size):
+      for y in range(size):
+        v = grid.map[x][y]
+        if v != 0:
+          values.append(v)
+    if len(values) == 0:
+      return 0
+    return statistics.mean(values)
+
+  def max_value_in_the_corner(self, grid, size):
+    max_value = grid.getMaxTile()
+    last = size - 1
+    if grid.map[0][0] == max_value or grid.map[0][last] == max_value or grid.map[last][0] == max_value or grid.map[last][last] == max_value:
+      return 2
+    return 0
+
+  def potential_merges(self, grid, size):
+    count = 0
+    for x in range(size):
+      for y in range(size):
+        tile_value = grid.map[x][y]
+        if (tile_value == 0):
+          continue
+        # compare to nearest tile up,down,left,right
+        if x > 0 and tile_value == grid.map[x-1][y]:
+          count += 1
+        elif x < 3 and tile_value == grid.map[x+1][y]:
+          count += 1
+        elif y > 0 and tile_value == grid.map[x][y-1]:
+          count += 1
+        elif y < 3 and tile_value == grid.map[x][y+1]:
+          count += 1
+    return count // 2
+
+  def column_sum_more_than_others(self, grid, size, column=0):
+    s = []
+    for x in range(size):
+      s.append(0)
+      for y in range(size):
+        v = grid.map[y][x]
+        s[x] = s[x] + v
+    if s[column] == max(s):
+      return 1
+    return 0
