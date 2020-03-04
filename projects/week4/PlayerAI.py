@@ -5,11 +5,12 @@ import statistics
 
 algorithm_dict = {
     0: "MINIMAX",
-    1: "ALPHABETAPRUNING"
+    1: "ALPHABETAPRUNING",
+    2: "ALPHABETAPRUNING_ITERATIVEDEPTH"
 }
 
 class PlayerAI(BaseAI):
-  def __init__(self, algorithm=algorithm_dict[1]):
+  def __init__(self, algorithm=algorithm_dict[2]):
     self.algorithm = algorithm
     self.move_stats = []
 
@@ -20,7 +21,11 @@ class PlayerAI(BaseAI):
     In particular, 0 stands for "Up", 1 stands for "Down", 2 stands for "Left", 
     and 3 stands for "Right".
     """
-    alg = Minimax(time_limit=0.07) if self.algorithm == algorithm_dict[0] else AlphaBetaPruning(time_limit=0.07)
+    alg = AlphaBetaPruningIterativeDepth()
+    if self.algorithm == algorithm_dict[0]:
+      alg = Minimax(time_limit=0.07)
+    elif self.algorithm == algorithm_dict[1]:
+      alg = AlphaBetaPruning(time_limit=0.07)
     best_move = alg.search(grid)
     self.move_stats.append(alg.stats())
 
@@ -223,17 +228,85 @@ class AlphaBetaPruning(BaseAdversialSearch):
 
     return max_child, max_utility
 
+class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
+  def __init__(self, time_limit=0.2, depth_limit=10):
+    self.start_time = time.process_time()
+    self.time_limit = time_limit
+    self.depth_limit = depth_limit
+    self.depth = 0
+    self.pruned = 0
+    self.elapsed_time = 0
+
+  def stats(self):
+    return self.depth, self.pruned, round(self.elapsed_time, 8)
+
+  def search(self, grid):
+    alpha, beta = -math.inf, math.inf
+    child = None
+    while self.elapsed_time <= self.time_limit:
+      self.depth_limit += 5
+      child, utility = self.max(grid, alpha, beta)
+      self.elapsed_time = time.process_time() - self.start_time
+    print(f'\ndepth_limit: {self.depth_limit}')
+    best_move = BaseAdversialSearch.find_best_move(grid, child)
+    return best_move
+
+  def min(self, grid, alpha, beta):
+    if self.cutoff_test(grid):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    min_child, min_utility = None, math.inf
+
+    successors = BaseAdversialSearch.computer_move_successors(grid)
+    for child in successors:
+      _, utility = self.max(child, alpha, beta)
+      if utility < min_utility:
+        min_child, min_utility = child, utility
+      if min_utility <= alpha:
+        self.pruned += 1
+        return min_child, min_utility
+      beta = min(beta, min_utility)
+
+    return min_child, min_utility
+
+  def max(self, grid, alpha, beta):
+    if self.cutoff_test(grid):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    max_child, max_utility = None, -math.inf
+
+    successors = BaseAdversialSearch.player_move_successors(grid)
+    for child in successors:
+      _, utility = self.min(child, alpha, beta)
+      if utility > max_utility:
+        max_child, max_utility = child, utility
+      if max_utility >= beta:
+        self.pruned += 1
+        return max_child, max_utility
+      alpha = max(alpha, max_utility)
+
+    return max_child, max_utility
+
+  def cutoff_test(self, grid):
+    depth_limit_reached = self.depth >= self.depth_limit
+    #cells_na = len(grid.getAvailableCells()) == 0
+    moves_na = len(grid.getAvailableMoves()) == 0
+
+    return depth_limit_reached or moves_na
+
 class Utility:
   def __init__(self):
     self.criteria = []
 
   def score(self, grid):
-    self.criteria.append(len(grid.getAvailableCells()))
+    self.criteria.append(len(grid.getAvailableCells())*0.5)
     #self.criteria.append(math.log2(grid.getMaxTile()))
     #self.criteria.append(self.column_sum_more_than_others(grid, grid.size))
     #self.criteria.append(self.average_tile_value(grid, grid.size))
-    self.criteria.append(self.potential_merges(grid, grid.size))
-    self.criteria.append(self.max_value_in_the_corner(grid, grid.size))
+    self.criteria.append(self.potential_merges(grid, grid.size)*0.1)
+    self.criteria.append(self.max_value_in_the_corner(grid, grid.size)*0.4)
     return sum(self.criteria)
 
   def average_tile_value(self, grid, size):
@@ -245,13 +318,13 @@ class Utility:
           values.append(v)
     if len(values) == 0:
       return 0
-    return statistics.mean(values)
+    return math.log2(statistics.mean(values))
 
   def max_value_in_the_corner(self, grid, size):
     max_value = grid.getMaxTile()
     last = size - 1
     if grid.map[0][0] == max_value or grid.map[0][last] == max_value or grid.map[last][0] == max_value or grid.map[last][last] == max_value:
-      return 2
+      return 4
     return 0
 
   def potential_merges(self, grid, size):
@@ -261,6 +334,7 @@ class Utility:
         tile_value = grid.map[x][y]
         if (tile_value == 0):
           continue
+        #multiplier = math.log2(tile_value)
         # compare to nearest tile up,down,left,right
         if x > 0 and tile_value == grid.map[x-1][y]:
           count += 1
