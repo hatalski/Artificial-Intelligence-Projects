@@ -301,13 +301,39 @@ class Utility:
     self.criteria = []
 
   def score(self, grid):
-    self.criteria.append(len(grid.getAvailableCells())*0.5)
+    self.criteria.append(len(grid.getAvailableCells())*0.4)
     #self.criteria.append(math.log2(grid.getMaxTile()))
     #self.criteria.append(self.column_sum_more_than_others(grid, grid.size))
     #self.criteria.append(self.average_tile_value(grid, grid.size))
-    self.criteria.append(self.potential_merges(grid, grid.size)*0.1)
-    self.criteria.append(self.max_value_in_the_corner(grid, grid.size)*0.4)
+    self.criteria.append(self.monotonic_grid(grid, grid.size)*0.2)
+    self.criteria.append(self.potential_merges(grid, grid.size)*0.3)
+    self.criteria.append(self.max_value_in_the_corner(grid, grid.size)*0.1)
     return sum(self.criteria)
+
+  @staticmethod
+  def strictly_increasing(L):
+    return all(x < y for x, y in zip(L, L[1:]))
+  
+  @staticmethod
+  def strictly_decreasing(L):
+    return all(x > y for x, y in zip(L, L[1:]))
+
+  def monotonic_grid(self, grid, size):
+    """
+    Score is calculated from the number of monotonic rows and columns
+    """
+    score = 0
+    for x in range(size):
+      col = []
+      row = []
+      for y in range(size):
+        row.append(grid.map[x][y])
+        col.append(grid.map[y][x])
+      if Utility.strictly_increasing(row) or Utility.strictly_decreasing(row):
+        score += 1
+      if Utility.strictly_increasing(col) or Utility.strictly_decreasing(col):
+        score += 1
+    return score
 
   def average_tile_value(self, grid, size):
     values = []
@@ -324,7 +350,7 @@ class Utility:
     max_value = grid.getMaxTile()
     last = size - 1
     if grid.map[0][0] == max_value or grid.map[0][last] == max_value or grid.map[last][0] == max_value or grid.map[last][last] == max_value:
-      return 4
+      return 10
     return 0
 
   def potential_merges(self, grid, size):
