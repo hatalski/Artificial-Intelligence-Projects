@@ -109,6 +109,7 @@ class GameManager:
 
             turn = 1 - turn
         print(maxTile)
+        print(f'\nMove stats: {self.playerAI.move_stats}')
 
     def isGameOver(self):
         return not self.grid.canMove()

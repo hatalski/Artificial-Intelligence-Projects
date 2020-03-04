@@ -7,6 +7,19 @@ import time
 
 displayer = Displayer()
 
+def populate_grid(grid, state):
+  size = grid.size
+  for x in range(0, size):
+    for y in range(0, size):
+      grid.insertTile((x, y), state[x][y])
+  return grid
+
+def grid_from_state(state):
+  grid = Grid(size=4)
+  populate_grid(grid, state)
+  displayer.display(grid)
+  return grid
+
 @pytest.fixture
 def grid4_full():
   grid = Grid(size=4)
@@ -49,11 +62,17 @@ def grid4_2_down():
   return grid
 
 class TestBaseAdversialSearch:
-  def test_player_move_successors(self, grid4_2):
-    successors = BaseAdversialSearch.player_move_successors(grid4_2)
+  def test_player_move_successors(self):
+    grid = grid_from_state(
+        state=[[256, 2, 8,  8],
+               [64, 0,  4,  2],
+               [16, 16,  2,  4],
+               [4,  8,  4,  2]])
+    successors = BaseAdversialSearch.player_move_successors(grid)
     for s in successors:
       print(displayer.display(s))
-    assert len(successors) == 2
+    assert len(successors) == 4
+    #assert False
 
   def test_computer_move_successors(self, grid4_2):
     successors = BaseAdversialSearch.computer_move_successors(grid4_2)
@@ -106,18 +125,27 @@ class TestPlayerAI:
     print(f'spent_time_on_move: {spent_time_on_move}')
     assert spent_time_on_move < 0.25  # 0.2s timeLimit + 0.05s allowance
     # assert False
+    
+  def test_player_move_alpha_beta_pruning(self):
+    ai = PlayerAI()
+    grid = grid_from_state(
+        state=[[256, 2, 8,  8],
+               [64, 0,  4,  2],
+               [16, 16,  2,  4],
+               [4,  8,  4,  2]])
+    move = ai.getMove(grid)
+    print(f'move: {move}')
+    assert isinstance(move, int)
+    # down (1) and right (3) are the only possible moves in this grid state
+    assert move == 2
+    #spent_time_on_move = ai.move_stats[-1][2]
+    #print(f'spent_time_on_move: {spent_time_on_move}')
+    #assert spent_time_on_move < 0.25  # 0.2s timeLimit + 0.05s allowance
+    #assert False
 
 # TESTING UTILITY CLASS
 
 class TestUtility:
-  def test_potential_merges(self, grid4_2, grid4_full):
-    utility = Utility()
-    pm = utility.potential_merges(grid4_2, grid4_2.size)
-    assert pm == 0
-
-    pm_full = utility.potential_merges(grid4_full, grid4_full.size)
-    assert pm_full == 8
-
   def test_average_tile_value(self, grid4_2, grid4_full):
     utility = Utility()
     atv = utility.average_tile_value(grid4_2, grid4_2.size)
@@ -125,6 +153,88 @@ class TestUtility:
 
     atv_full = utility.average_tile_value(grid4_full, grid4_full.size)
     assert atv_full == 2
+    
+  def test_find_mergeable_pairs(self):
+    assert Utility.find_mergeable_pairs([2, 4, 2, 2]) == 1
+    assert Utility.find_mergeable_pairs([2, 0, 2, 2]) == 1
+    assert Utility.find_mergeable_pairs([4, 4, 4, 2]) == 1
+    assert Utility.find_mergeable_pairs([2, 16, 16, 2]) == 1
+    assert Utility.find_mergeable_pairs([4, 4, 2, 2]) == 2
+    assert Utility.find_mergeable_pairs([4, 4, 4, 4]) == 2
+    assert Utility.find_mergeable_pairs([4, 0, 0, 4]) == 1
+    assert Utility.find_mergeable_pairs([0, 8, 0, 8]) == 1
+    assert Utility.find_mergeable_pairs([16, 0, 16, 0]) == 1
+    assert Utility.find_mergeable_pairs([16, 8, 4, 0]) == 0
+    assert Utility.find_mergeable_pairs([0, 2, 4, 0]) == 0
+    
+  def test_potential_merges_score(self):
+    grid = Grid(size=4)
+    state = [[128, 32, 32,  2],
+             [16, 64,  4, 16],
+             [8, 16,  2,  4],
+             [4,  2,  0,  2]]
+    populate_grid(grid, state)
+    displayer.display(grid)
+    
+    utility = Utility()
+    pm = utility.potential_merges_score(grid)
+    assert pm == 2
+  
+  def test_score_case1(self):
+    grid = grid_from_state(
+        state=[[256, 2, 8,  8],
+               [64, 0,  4,  2],
+               [16, 16,  2,  4],
+               [4,  8,  4,  2]])
+    
+    print('LEFT:')
+    left_grid = grid.clone()
+    left_grid.moveLR(False)
+    displayer.display(left_grid)
+    utility = Utility()
+    utility.score(left_grid)
+    utility.display_features()
+    
+    print('RIGHT:')
+    right_grid = grid.clone()
+    right_grid.moveLR(True)
+    displayer.display(right_grid)
+    utility = Utility()
+    utility.score(right_grid)
+    utility.display_features()
+
+    print('UP:')
+    up_grid = grid.clone()
+    up_grid.moveUD(False)
+    displayer.display(up_grid)
+    utility = Utility()
+    utility.score(up_grid)
+    utility.display_features()
+
+    print('DOWN:')
+    down_grid = grid.clone()
+    down_grid.moveUD(True)
+    displayer.display(down_grid)
+    utility = Utility()
+    utility.score(down_grid)
+    utility.display_features()
+
+    assert False
+    
+
+  def test_score(self):
+    grid = grid_from_state(
+        state=[[128, 32, 32,  2],
+               [16, 64,  4, 16],
+               [8, 16,  2,  4],
+               [4,  2,  0,  2]])
+    moves = grid.getAvailableMoves()
+    print(f'available moves: {moves}')
+    print(grid.map[1])
+    utility = Utility()
+    utility.score(grid)
+    utility.display_features()
+    assert False
 
   # utility_full = Utility(grid4_full)
   # pm_full = utility_full.potential_merges()

@@ -23,14 +23,12 @@ class PlayerAI(BaseAI):
     """
     alg = AlphaBetaPruningIterativeDepth()
     if self.algorithm == algorithm_dict[0]:
-      alg = Minimax(time_limit=0.07)
+      alg = Minimax(time_limit=0.04)
     elif self.algorithm == algorithm_dict[1]:
       alg = AlphaBetaPruning(time_limit=0.07)
     best_move = alg.search(grid)
     self.move_stats.append(alg.stats())
 
-    if best_move is None:
-      print(f'\nMove stats: {self.move_stats}')
     return best_move
 
 class BaseAdversialSearch:
@@ -206,6 +204,7 @@ class AlphaBetaPruning(BaseAdversialSearch):
         self.pruned += 1
         return min_child, min_utility
       beta = min(beta, min_utility)
+      print(f'beta:{beta}')
 
     return min_child, min_utility
 
@@ -225,14 +224,16 @@ class AlphaBetaPruning(BaseAdversialSearch):
         self.pruned += 1
         return max_child, max_utility
       alpha = max(alpha, max_utility)
+      print(f'alpha:{alpha}')
 
     return max_child, max_utility
 
 class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
-  def __init__(self, time_limit=0.2, depth_limit=10):
+  def __init__(self, time_limit=0.2, depth_limit=10, depth_step=1):
     self.start_time = time.process_time()
     self.time_limit = time_limit
     self.depth_limit = depth_limit
+    self.depth_step = depth_step
     self.depth = 0
     self.pruned = 0
     self.elapsed_time = 0
@@ -244,11 +245,12 @@ class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
     alpha, beta = -math.inf, math.inf
     child = None
     while self.elapsed_time <= self.time_limit:
-      self.depth_limit += 5
+      self.depth_limit += self.depth_step
       child, utility = self.max(grid, alpha, beta)
       self.elapsed_time = time.process_time() - self.start_time
-    print(f'\ndepth_limit: {self.depth_limit}')
     best_move = BaseAdversialSearch.find_best_move(grid, child)
+    print(
+        f'\ndepth limit: {self.depth_limit} best move: {best_move} pruned:{self.pruned}\nalpha: {alpha} beta: {beta}')
     return best_move
 
   def min(self, grid, alpha, beta):
@@ -265,8 +267,10 @@ class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
         min_child, min_utility = child, utility
       if min_utility <= alpha:
         self.pruned += 1
+        #print(f'pruned min_utility:{min_utility}')
         return min_child, min_utility
       beta = min(beta, min_utility)
+    #print(f'beta:{beta} alpha:{alpha}')
 
     return min_child, min_utility
 
@@ -284,8 +288,81 @@ class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
         max_child, max_utility = child, utility
       if max_utility >= beta:
         self.pruned += 1
+        #print(f'pruned max_utility:{max_utility}')
         return max_child, max_utility
       alpha = max(alpha, max_utility)
+    #print(f'beta:{beta} alpha:{alpha}')
+
+    return max_child, max_utility
+
+  def cutoff_test(self, grid):
+    depth_limit_reached = self.depth >= self.depth_limit
+    #cells_na = len(grid.getAvailableCells()) == 0
+    moves_na = len(grid.getAvailableMoves()) == 0
+
+    return depth_limit_reached or moves_na
+
+class AlphaBetaPruningIterativeDepth_2(BaseAdversialSearch):
+  def __init__(self, time_limit=0.2, depth_limit=10, depth_step=1):
+    self.start_time = time.process_time()
+    self.time_limit = time_limit
+    self.depth_limit = depth_limit
+    self.depth_step = depth_step
+    self.depth = 0
+    self.pruned = 0
+    self.elapsed_time = 0
+
+  def stats(self):
+    return self.depth, self.pruned, round(self.elapsed_time, 8)
+
+  def search(self, grid):
+    self.alpha, self.beta = -math.inf, math.inf
+    child = None
+    while self.elapsed_time <= self.time_limit:
+      self.depth_limit += self.depth_step
+      child, utility = self.max(grid)
+      self.elapsed_time = time.process_time() - self.start_time
+    best_move = BaseAdversialSearch.find_best_move(grid, child)
+    print(f'\ndepth limit: {self.depth_limit} best move: {best_move} pruned:{self.pruned}\nalpha: {self.alpha} beta: {self.beta}')
+    return best_move
+
+  def min(self, grid):
+    if self.cutoff_test(grid):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    min_child, min_utility = None, math.inf
+
+    successors = BaseAdversialSearch.computer_move_successors(grid)
+    for child in successors:
+      _, utility = self.max(child)
+      if utility < min_utility:
+        min_child, min_utility = child, utility
+      if min_utility <= self.alpha:
+        self.pruned += 1
+        return min_child, min_utility
+      self.beta = min(self.beta, min_utility)
+    print(f'beta:{self.beta} alpha:{self.alpha}')
+
+    return min_child, min_utility
+
+  def max(self, grid):
+    if self.cutoff_test(grid):
+      return (None, Utility().score(grid))
+
+    self.depth = self.depth + 1
+    max_child, max_utility = None, -math.inf
+
+    successors = BaseAdversialSearch.player_move_successors(grid)
+    for child in successors:
+      _, utility = self.min(child)
+      if utility > max_utility:
+        max_child, max_utility = child, utility
+      if max_utility >= self.beta:
+        self.pruned += 1
+        return max_child, max_utility
+      self.alpha = max(self.alpha, max_utility)
+    print(f'beta:{self.beta} alpha:{self.alpha}')
 
     return max_child, max_utility
 
@@ -298,17 +375,38 @@ class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
 
 class Utility:
   def __init__(self):
-    self.criteria = []
+    self.available_cells = 0
+    self.max_tile = 0
+    self.monotonic = 0
+    self.smoothness = 0
+    self.merges = 0
+    self.max_tile_in_corner = 0
+    self.average_value = 0
+    self.total = 0
+
+  def display_features(self):
+    print(f'''
+total: {self.total} 
+available_cells: {self.available_cells}
+max_tile: {self.max_tile}
+monotonic: {self.monotonic}
+smoothness: {self.smoothness}
+merges: {self.merges}
+max_tile_in_corner: {self.max_tile_in_corner}
+average_value: {self.average_value}
+    ''')
 
   def score(self, grid):
-    self.criteria.append(len(grid.getAvailableCells())*0.4)
-    #self.criteria.append(math.log2(grid.getMaxTile()))
-    #self.criteria.append(self.column_sum_more_than_others(grid, grid.size))
-    #self.criteria.append(self.average_tile_value(grid, grid.size))
-    self.criteria.append(self.monotonic_grid(grid, grid.size)*0.2)
-    self.criteria.append(self.potential_merges(grid, grid.size)*0.3)
-    self.criteria.append(self.max_value_in_the_corner(grid, grid.size)*0.1)
-    return sum(self.criteria)
+    self.available_cells = len(grid.getAvailableCells())
+    #self.max_tile = math.log2(grid.getMaxTile())
+    #self.average_value = self.average_tile_value(grid, grid.size)
+    self.monotonic = self.monotonic_grid(grid, grid.size)*0.9
+    self.merges = self.potential_merges_score(grid)*0.8
+    #self.smoothness = self.smoothness_score(grid, grid.size)
+    self.max_tile_in_corner = self.max_value_in_the_corner(grid, grid.size)
+    self.total = sum([self.available_cells, self.max_tile, self.average_value,
+                     self.monotonic, self.merges, self.smoothness, self.max_tile_in_corner])
+    return self.total
 
   @staticmethod
   def strictly_increasing(L):
@@ -344,33 +442,77 @@ class Utility:
           values.append(v)
     if len(values) == 0:
       return 0
-    return math.log2(statistics.mean(values))
+    return round(statistics.mean(values))
 
   def max_value_in_the_corner(self, grid, size):
     max_value = grid.getMaxTile()
     last = size - 1
     if grid.map[0][0] == max_value or grid.map[0][last] == max_value or grid.map[last][0] == max_value or grid.map[last][last] == max_value:
-      return 10
+      return 2
     return 0
 
-  def potential_merges(self, grid, size):
-    count = 0
+  def smoothness_score(self, grid, size):
+    smooth = 0
     for x in range(size):
       for y in range(size):
         tile_value = grid.map[x][y]
         if (tile_value == 0):
           continue
-        #multiplier = math.log2(tile_value)
+        log_value = math.log2(tile_value)
         # compare to nearest tile up,down,left,right
-        if x > 0 and tile_value == grid.map[x-1][y]:
-          count += 1
-        elif x < 3 and tile_value == grid.map[x+1][y]:
-          count += 1
-        elif y > 0 and tile_value == grid.map[x][y-1]:
-          count += 1
-        elif y < 3 and tile_value == grid.map[x][y+1]:
-          count += 1
-    return count // 2
+        if x > 0:
+          right_v = grid.map[x-1][y]
+          if right_v != 0:
+            smooth += abs(log_value - math.log2(right_v))
+        elif x < 3:
+          left_v = grid.map[x+1][y]
+          if left_v != 0:
+            smooth += abs(log_value - math.log2(left_v))
+        elif y > 0:
+          up_v = grid.map[x][y-1]
+          if up_v != 0:
+            smooth += abs(log_value - math.log2(up_v))
+        elif y < 3:
+          down_v = grid.map[x][y+1]
+          if down_v != 0:
+            smooth += abs(log_value - math.log2(down_v))
+
+    return smooth
+
+  @staticmethod
+  def find_mergeable_pairs(l):
+    pairs = 0
+    looked_up = set()
+    size = len(l)
+    for i in range(0, size):
+      v = l[i]
+      if v == 0 or v in looked_up:
+        continue
+      n = i
+      encounters = {v: 1}
+      while n + 1 < size:
+        n += 1
+        if l[n] == 0:
+          continue
+        if l[n] == v:
+          encounters[v] += 1
+        else:
+          break
+      #if encounters[v] % 2 == 0:
+      if encounters[v] // 2 > 0:
+        pairs += encounters[v] // 2
+        looked_up.add(v)
+
+    return pairs
+    
+  def potential_merges_score(self, grid):
+    merges = 0
+    columns = list(zip(*grid.map))
+    for c in columns:
+      merges += Utility.find_mergeable_pairs(c)
+    for r in range(0, grid.size):
+      merges += Utility.find_mergeable_pairs(grid.map[r])
+    return merges
 
   def column_sum_more_than_others(self, grid, size, column=0):
     s = []
