@@ -160,17 +160,17 @@ class TestUtility:
     assert atv_full == 2
     
   def test_find_mergeable_pairs(self):
-    assert Utility.find_mergeable_pairs([2, 4, 2, 2]) == 1
-    assert Utility.find_mergeable_pairs([2, 0, 2, 2]) == 1
-    assert Utility.find_mergeable_pairs([4, 4, 4, 2]) == 1
-    assert Utility.find_mergeable_pairs([2, 16, 16, 2]) == 1
-    assert Utility.find_mergeable_pairs([4, 4, 2, 2]) == 2
-    assert Utility.find_mergeable_pairs([4, 4, 4, 4]) == 2
-    assert Utility.find_mergeable_pairs([4, 0, 0, 4]) == 1
-    assert Utility.find_mergeable_pairs([0, 8, 0, 8]) == 1
-    assert Utility.find_mergeable_pairs([16, 0, 16, 0]) == 1
-    assert Utility.find_mergeable_pairs([16, 8, 4, 0]) == 0
-    assert Utility.find_mergeable_pairs([0, 2, 4, 0]) == 0
+    assert Utility.find_mergeable_pairs([2, 4, 2, 2])[0] == 1
+    assert Utility.find_mergeable_pairs([2, 0, 2, 2])[0] == 1
+    assert Utility.find_mergeable_pairs([4, 4, 4, 2])[0] == 1
+    assert Utility.find_mergeable_pairs([2, 16, 16, 2])[0] == 1
+    assert Utility.find_mergeable_pairs([4, 4, 2, 2])[0] == 2
+    assert Utility.find_mergeable_pairs([4, 4, 4, 4])[0] == 2
+    assert Utility.find_mergeable_pairs([4, 0, 0, 4])[0] == 1
+    assert Utility.find_mergeable_pairs([0, 8, 0, 8])[0] == 1
+    assert Utility.find_mergeable_pairs([16, 0, 16, 0])[0] == 1
+    assert Utility.find_mergeable_pairs([16, 8, 4, 0])[0] == 0
+    assert Utility.find_mergeable_pairs([0, 2, 4, 0])[0] == 0
     
   def test_potential_merges_score(self):
     grid = grid_from_state(
@@ -246,12 +246,101 @@ class TestUtility:
     utility = Utility()
     utility.score(grid)
     utility.display_features()
+    #assert False
+
+  def test_score_case2(self):
+    grid = grid_from_state(
+        state=[[ 8,  4,  2,  0],
+               [ 8, 16,  8,  2],
+               [16, 32, 64, 16],
+               [32, 64,128,512]])
+
+    utility = Utility()
+    utility.score(grid)
+    utility.display_features()
+    
+    print('LEFT:')
+    left_grid = grid.clone()
+    left_grid.moveLR(False)
+    displayer.display(left_grid)
+    utility = Utility()
+    utility.score(left_grid)
+    utility.display_features()
+
+    print('RIGHT:')
+    right_grid = grid.clone()
+    right_grid.moveLR(True)
+    displayer.display(right_grid)
+    utility = Utility()
+    utility.score(right_grid)
+    utility.display_features()
+
+    print('UP:')
+    up_grid = grid.clone()
+    up_grid.moveUD(False)
+    displayer.display(up_grid)
+    utility = Utility()
+    utility.score(up_grid)
+    utility.display_features()
+
+    print('DOWN:')
+    down_grid = grid.clone()
+    down_grid.moveUD(True)
+    displayer.display(down_grid)
+    utility = Utility()
+    utility.score(down_grid)
+    utility.display_features()
+    
+    print(
+        f'moves: {down_grid.getAvailableMoves()} moves score: {utility.insufficient_moves_variety_score(down_grid)}')
+    
+
     assert False
+    
+  def test_score_case3(self):
+    grid = grid_from_state(
+        state=[[0,      2,   0,   4],
+               [0,      8,  16,  16],
+               [16,   128,  64,  16],
+               [1024, 512, 256,  32]])
 
-  # utility_full = Utility(grid4_full)
-  # pm_full = utility_full.potential_merges()
-  # assert pm_full == 8
+    utility = Utility()
+    utility.score(grid)
+    utility.display_features()
 
-# def test_column_sum_more_than_others(playerAI, grid4_2, grid4_2_inv):
-#   assert playerAI.column_sum_more_than_others(grid4_2) == 0
-#   assert playerAI.column_sum_more_than_others(grid4_2_inv) == 1
+    print('LEFT:')
+    left_grid = grid.clone()
+    left_grid.moveLR(False)
+    displayer.display(left_grid)
+    utility = Utility()
+    utility.score(left_grid)
+    utility.display_features()
+
+    print('RIGHT:')
+    right_grid = grid.clone()
+    right_grid.moveLR(True)
+    displayer.display(right_grid)
+    utility = Utility()
+    utility.score(right_grid)
+    utility.display_features()
+
+    print('UP:')
+    up_grid = grid.clone()
+    up_grid.moveUD(False)
+    displayer.display(up_grid)
+    utility = Utility()
+    utility.score(up_grid)
+    utility.display_features()
+
+    print('DOWN:')
+    down_grid = grid.clone()
+    down_grid.moveUD(True)
+    displayer.display(down_grid)
+    utility = Utility()
+    utility.score(down_grid)
+    utility.display_features()
+
+    print(
+        f'moves: {down_grid.getAvailableMoves()} moves score: {utility.insufficient_moves_variety_score(down_grid)}')
+
+    assert False
