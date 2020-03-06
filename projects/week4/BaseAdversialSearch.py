@@ -1,3 +1,5 @@
+from projects.week4.Utility import Utility
+
 class BaseAdversialSearch:
   def search(self, grid):
     pass
@@ -10,11 +12,20 @@ class BaseAdversialSearch:
 
   def stats(self):
     pass
+  
+  @staticmethod
+  def sort_by(grid):
+    #return grid.getAvailableCells()
+    utility = Utility()
+    return utility.total_game_score(grid)
+
 
   @staticmethod
   def player_move_successors(grid):
     """
-    Returns grid successors of all possible Player moves
+    Returns grid successors of all possible Player moves.
+    
+    Idea is to order successors by available cells from many available to few.
     """
     successors = []
     moves = grid.getAvailableMoves()
@@ -23,6 +34,7 @@ class BaseAdversialSearch:
       if successor.move(move):
         successors.append(successor)
     return successors
+    #return sorted(successors, key=BaseAdversialSearch.sort_by)
 
   @staticmethod
   def computer_move_successors(grid):

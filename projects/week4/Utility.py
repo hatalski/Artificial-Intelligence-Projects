@@ -13,6 +13,7 @@ class Utility:
     self.max_tile_in_corner = 0
     self.average_value = 0
     self.moves_score = 0
+    self.game_score = 0
     self.total = 0
 
   def display_features(self):
@@ -36,12 +37,25 @@ average_value: {self.average_value}
     #self.average_value = self.average_tile_value(grid, grid.size)
     self.monotonic = self.monotonic_score(grid)
     self.merge_pairs, self.merge_score = self.potential_merges_score(grid)
-    self.smoothness = -self.smoothness_score(grid) // 2
     self.center_edges_diff = self.grid_center_to_edges_value_diff(grid) // 2
+    self.smoothness = -self.smoothness_score(grid) // 2
+    # if grid.getMaxTile() < 1024:
+    #   self.center_edges_diff = self.grid_center_to_edges_value_diff(grid) // 2
+    #   self.smoothness = -self.smoothness_score(grid)
+    # else: 
+    #   self.center_edges_diff = self.grid_center_to_edges_value_diff(grid) // 4
+    #   self.smoothness = -self.smoothness_score(grid) // 4
     self.max_tile_in_corner = self.max_value_in_the_corner(grid, grid.size)
+    
+    # if grid.getMaxTile() < 1024:
+    #self.game_score = self.total_game_score(grid)
     #self.moves_score = self.insufficient_moves_variety_score(grid)
     # self.total = sum([self.available_cells, self.max_tile, self.average_value, self.moves_score,
     #                   self.monotonic, self.merge_score, self.smoothness, self.max_tile_in_corner])
+    if grid.getMaxTile() < 1024:
+      gs = self.game_score // 1000
+    else:
+      gs = self.game_score // 10000
     self.total = self.available_cells + self.max_tile + \
         self.average_value + self.moves_score + self.center_edges_diff + \
         self.monotonic + self.merge_score + self.smoothness + self.max_tile_in_corner
@@ -219,7 +233,7 @@ average_value: {self.average_value}
 
   def max_value_in_the_corner(self, grid, size):
     """
-    Returns 2 if tile with maximum value is in the corner (any corner). Otherwise, returns 0.
+    Returns log2(max_tile_value) if tile with maximum value is in the corner (any corner). Otherwise, returns 0.
     """
     max_value = grid.getMaxTile()
     last = size - 1
@@ -237,3 +251,14 @@ average_value: {self.average_value}
     if s[column] == max(s):
       return 1
     return 0
+
+  def total_game_score(self, grid):
+    size = grid.size
+    game_score = 0
+    for x in range(size):
+      for y in range(size):
+        v = grid.getCellValue((x,y))
+        if v == 0 or v == 2:
+          continue
+        game_score += (math.log2(v)-1) * v
+    return game_score
