@@ -38,7 +38,7 @@ average_value: {self.average_value}
     self.monotonic = self.monotonic_score(grid)
     self.merge_pairs, self.merge_score = self.potential_merges_score(grid)
     self.center_edges_diff = self.grid_center_to_edges_value_diff(grid) // 2
-    self.smoothness = -self.smoothness_score(grid) // 2
+    self.smoothness = -self.smoothness_score(grid) // 1.5
     # if grid.getMaxTile() < 1024:
     #   self.center_edges_diff = self.grid_center_to_edges_value_diff(grid) // 2
     #   self.smoothness = -self.smoothness_score(grid)
@@ -201,6 +201,7 @@ average_value: {self.average_value}
     last = size - 1
     sum_on_edges = 0
     sum_in_center = 0
+    grid.getMaxTile()
     for x in range(size):
       for y in range(size):
         v = grid.getCellValue((x, y))
@@ -209,7 +210,7 @@ average_value: {self.average_value}
         if v == 0:
           continue
         if (x == y == 0) or (x == 0 and y == last) or (y == 0 and x == last) or (x == y == last):
-          sum_on_edges += math.log2(v)
+          sum_on_edges += math.log2(v)*1.1
         elif x == 0 or y == 0 or x == last or y == last:
           sum_on_edges += math.log2(v)
         else:
@@ -253,6 +254,9 @@ average_value: {self.average_value}
     return 0
 
   def total_game_score(self, grid):
+    """
+    Returns 2048 game score.
+    """
     size = grid.size
     game_score = 0
     for x in range(size):
@@ -262,3 +266,12 @@ average_value: {self.average_value}
           continue
         game_score += (math.log2(v)-1) * v
     return game_score
+
+  @staticmethod
+  def getMaxTilePos(grid):
+    size = grid.size
+    maxTile = 0
+    for x in range(size):
+        for y in range(grid.size):
+            maxTile = max(maxTile, grid.map[x][y])
+    return maxTile
