@@ -2,6 +2,7 @@ from projects.week4.Grid import Grid
 from projects.week4.ComputerAI import ComputerAI
 from projects.week4.PlayerAI   import PlayerAI
 from projects.week4.Displayer import Displayer
+from projects.week4.ChartBuilder import ChartBuilder
 from random     import randint
 import time
 
@@ -30,6 +31,7 @@ class GameManager:
         self.computerAI = None
         self.playerAI   = None
         self.displayer  = None
+        self.chartBuilder = None
         self.over       = False
 
     def setComputerAI(self, computerAI):
@@ -40,6 +42,9 @@ class GameManager:
 
     def setDisplayer(self, displayer):
         self.displayer = displayer
+        
+    def setChartBuilder(self, chartBuilder):
+        self.chartBuilder = chartBuilder
 
     def updateAlarm(self, currTime):
         if currTime - self.prevTime > timeLimit + allowance:
@@ -110,6 +115,9 @@ class GameManager:
             turn = 1 - turn
         print(maxTile)
         print(f'\nMove stats: {self.playerAI.move_stats}')
+        self.chartBuilder.setup(self.playerAI.features_list)
+        self.chartBuilder.save_to_csv()
+        self.chartBuilder.draw()
 
     def isGameOver(self):
         return not self.grid.canMove()
@@ -131,10 +139,12 @@ def main():
     playerAI  	= PlayerAI()
     computerAI  = ComputerAI()
     displayer 	= Displayer()
+    chartBuilder = ChartBuilder()
 
     gameManager.setDisplayer(displayer)
     gameManager.setPlayerAI(playerAI)
     gameManager.setComputerAI(computerAI)
+    gameManager.setChartBuilder(chartBuilder)
 
     gameManager.start()
 

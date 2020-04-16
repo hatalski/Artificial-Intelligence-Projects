@@ -12,16 +12,17 @@ class AlphaBetaPruningIterativeDepth(BaseAdversialSearch):
     self.depth = 0
     self.pruned = 0
     self.elapsed_time = 0
+    self.utility = 0
 
   def stats(self):
-    return self.depth, self.pruned, round(self.elapsed_time, 8)
+    return (self.depth, self.pruned, round(self.elapsed_time, 8))
 
   def search(self, grid):
     alpha, beta = -math.inf, math.inf
     child = None
     while self.elapsed_time <= self.time_limit:
       self.depth_limit += self.depth_step
-      child, utility = self.max(grid, alpha, beta)
+      child, self.utility = self.max(grid, alpha, beta)
       self.elapsed_time = time.process_time() - self.start_time
     best_move = BaseAdversialSearch.find_best_move(grid, child)
     print(

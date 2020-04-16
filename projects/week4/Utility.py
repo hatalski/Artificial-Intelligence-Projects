@@ -31,6 +31,22 @@ moves_score: {self.moves_score}
 average_value: {self.average_value}
     ''')
 
+  def get_features(self, grid):
+    self.score(grid)
+    return {
+      "total": self.total,
+      "available_cells": self.available_cells,
+      "max_tile": self.max_tile,
+      "monotonic": self.monotonic,
+      "smoothness": self.smoothness,
+      "merge_pairs": self.merge_pairs,
+      "merge_score": self.merge_score,
+      "center_edges_diff": self.center_edges_diff,
+      "max_tile_in_corner": self.max_tile_in_corner,
+      #"moves_score": self.moves_score,
+      #"average_value": self.average_value
+    }
+    
   def score(self, grid):
     self.available_cells = len(grid.getAvailableCells())
     #self.max_tile = math.log2(grid.getMaxTile())

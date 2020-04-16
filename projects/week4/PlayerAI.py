@@ -3,6 +3,7 @@ from projects.week4.Minimax import Minimax
 from projects.week4.AlphaBetaPruning import AlphaBetaPruning
 from projects.week4.AlphaBetaPruningIterativeDepth import AlphaBetaPruningIterativeDepth
 from projects.week4.BaseAdversialSearch import BaseAdversialSearch
+from projects.week4.Utility import Utility
 
 algorithm_dict = {
     0: "MINIMAX",
@@ -14,6 +15,7 @@ class PlayerAI(BaseAI):
   def __init__(self, algorithm=algorithm_dict[2]):
     self.algorithm = algorithm
     self.move_stats = []
+    self.features_list = []
 
   def getMove(self, grid):
     """
@@ -28,6 +30,10 @@ class PlayerAI(BaseAI):
     elif self.algorithm == algorithm_dict[1]:
       alg = AlphaBetaPruning(time_limit=0.07)
     best_move = alg.search(grid)
-    self.move_stats.append(alg.stats())
+    features = Utility().get_features(grid)
+    stats = alg.stats()
+    stats_dict = {"depth": stats[0], "pruned": stats[1], "elapsed_time": stats[2]}
+    self.features_list.append({**features, **stats_dict})
+    self.move_stats.append(stats)
 
     return best_move
